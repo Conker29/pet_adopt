@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/gemini_service.dart';
+import '../../models/message.dart'; // ← IMPORTAR
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -10,7 +11,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final _gemini = GeminiService();
-  final List<ChatMessage> _messages = [];
+  final List<Message> _messages = []; // ← CAMBIAR ChatMessage por Message
   bool _isLoading = false;
 
   @override
@@ -28,9 +29,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _addWelcomeMessage() {
     setState(() {
-      _messages.add(ChatMessage(
+      _messages.add(Message(
         text: '¡Hola! 👋 Soy PetBot, tu asistente de cuidado de mascotas. '
-            'Puedes preguntarme sobre alimentación, salud, comportamiento y más. '
+            'Puedo ayudarte con alimentación, salud, comportamiento y más. '
             '¿En qué puedo ayudarte hoy?',
         isUser: false,
       ));
@@ -44,29 +45,33 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.clear();
 
     setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: true));
+      _messages.add(Message(text: userMessage, isUser: true));
       _isLoading = true;
     });
 
     _scrollToBottom();
 
     try {
-      final response = await _gemini.sendMessage(userMessage);
+      // ← USAR EL SERVICIO CON HISTORIAL
+      final response = await _gemini.sendMessage(userMessage, _messages);
 
       setState(() {
-        _messages.add(ChatMessage(text: response, isUser: false));
+        _messages.add(Message(text: response, isUser: false));
         _isLoading = false;
       });
 
       _scrollToBottom();
     } catch (e) {
       setState(() {
-        _messages.add(ChatMessage(
-          text: 'Lo siento, ocurrió un error. Por favor intenta de nuevo.',
+        _messages.add(Message(
+          text: 'Lo siento, ocurrió un error: ${e.toString()}',
           isUser: false,
         ));
         _isLoading = false;
       });
+      
+      // Mostrar error en consola para debug
+      print('Error en chat: $e');
     }
   }
 
@@ -97,7 +102,6 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               setState(() {
                 _messages.clear();
-                _gemini.resetChat();
                 _addWelcomeMessage();
               });
               Navigator.pop(context);
@@ -113,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header con botón de limpiar
+        // Header
         Container(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -161,7 +165,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
+                      Icon(Icons.chat_bubble_outline,
+                          size: 80, color: Colors.grey[300]),
                       SizedBox(height: 16),
                       Text(
                         'No hay mensajes',
@@ -214,7 +219,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-        // Input de mensaje
+        // Input
         Container(
           padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -269,7 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
+  Widget _buildMessageBubble(Message message) {
     return Padding(
       padding: EdgeInsets.only(bottom: 16),
       child: Row(
@@ -339,11 +344,4 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-
-  ChatMessage({required this.text, required this.isUser});
 }

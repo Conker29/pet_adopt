@@ -11,7 +11,7 @@ class GeminiService {
   /// Obtenemos la API key desde las variables de entorno
   /// Si no existe, lanzamos un error
   static String get _apiKey {
-    final key = dotenv.env['GEMINI_API_KEY'];
+    final key = dotenv.env['GEMINI_API_KEY']??'' ;
     if (key == null || key.isEmpty) {
       throw Exception(
         'GEMINI_API_KEY no está configurada. '
